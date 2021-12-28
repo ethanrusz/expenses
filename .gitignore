@@ -128,4 +128,5 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# Ignore local testing secrets
 .streamlit/secrets.toml
