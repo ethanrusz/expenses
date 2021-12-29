@@ -3,7 +3,6 @@ import datetime
 import streamlit as st
 import pymongo
 import pandas as pd
-import altair as alt
 
 
 def get_data(client) -> pd.DataFrame:
@@ -17,65 +16,75 @@ def get_data(client) -> pd.DataFrame:
     return df
 
 
-def main():
-    st.set_page_config('Food Cost Tracker', '🍔')
-    client = pymongo.MongoClient(st.secrets['mongo']['uri'])
-    df_food = get_data(client)  # Get food data to display
+def validate_expense(document) -> bool:
+    """Check if fields are missing from the form.
 
-    st.markdown('# Food Cost Tracker')
-    with st.form(key='insert', clear_on_submit=True):  # Create insert form
-        st.markdown('## Insert New Expense')
-        col1, col2 = st.columns(2)  # Define columns in form
-        with col1:
-            date = st.date_input('Date', datetime.date.today(), None, datetime.date.today())
-            date = datetime.datetime.combine(date, datetime.time())  # Convert from date to datetime
-        with col2:
-            cost = st.number_input('Cost', 0.00, None, 0.00, 1.00)
-            cost = round(cost, 2)  # Round to two decimal places
-            gift_card = st.checkbox('Gift Card')
-        location = st.text_input('Location').strip()
-        comment = st.text_area('Comment')
-
-        insert_button = st.form_submit_button('Insert')
-
-    document = {  # Build the document to insert
-        "date": date,
-        "cost": cost,
-        "location": location,
-        "comment": comment,
-        "gift": gift_card,
-    }
-
-    if insert_button:
-        # When button is pressed validate
+    :param document: document to check
+    :return: bool, true if valid
+    """
+    if document['cost'] > 0 and document['location'] != "":
+        return True
+    else:
         if document['cost'] == 0:
             # No cost was entered
             st.error('Cost cannot be zero!')
         if document['location'] == "":
             # No location was entered
             st.error('You must enter a location!')
-        if document['cost'] > 0 and document['cost'] != "":
-            # User input is valid insert
-            db = client.expenses
-            try:
-                db.food.insert_one(document)
-                st.info('Row inserted successfully!')
-            except TypeError:
-                st.error('A type error occurred.')
+        if document['comment'] == "":
+            # No comment was entered
+            st.warning('A comment is recommended.')
+        return False
+
+
+def insert_expense(client, document) -> None:
+    db = client.expenses
+    try:
+        db.food.insert_one(document)
+        st.info('Row inserted successfully!')
+    except TypeError:
+        st.error('A type error occurred.')
+
+
+def main():
+    st.set_page_config('Food Cost Tracker', '🍔')
+    client = pymongo.MongoClient(st.secrets['mongo']['uri'])
+    df_expenses = get_data(client)  # Get food data to display
+
+    st.markdown('# Food Cost Tracker')
+    with st.form(key='insert', clear_on_submit=True):  # Create insert form
+        st.markdown('## Insert New Expense')
+        form_col_1, form_col_2 = st.columns(2)  # Define columns in form
+        with form_col_1:
+            date = st.date_input('Date', datetime.date.today(), None, datetime.date.today())
+            date = datetime.datetime.combine(date, datetime.time())  # Convert from date to datetime
+        with form_col_2:
+            cost = st.number_input('Cost', 0.00, None, 0.00, 1.00)
+            cost = round(cost, 2)  # Round to two decimal places
+            gift_card = st.checkbox('Gift Card')
+        location = st.text_input('Location').strip()
+        comment = st.text_area('Comment').strip()
+
+        insert_button = st.form_submit_button('Insert')
+
+    if insert_button:
+        expense = {  # Build the document to insert
+            "date": date,
+            "cost": cost,
+            "location": location,
+            "comment": comment,
+            "gift": gift_card,
+        }
+
+        if validate_expense(expense):
+            insert_expense(client, expense)
 
     st.markdown('## Data Overview')
     refresh_button = st.button('Refresh Data')
     if refresh_button:
-        df_food = get_data(client)
+        df_expenses = get_data(client)
 
-    st.dataframe(df_food)
-
-    chart = alt.Chart(df_food).mark_line().encode(
-        x='date:T',
-        y='cost'
-    )
-    # Chart is hidden for now
-    # st.altair_chart(chart, use_container_width=True)
+    st.dataframe(df_expenses)
 
 
 if __name__ == '__main__':
