@@ -1,3 +1,4 @@
+import calendar
 import datetime
 
 import streamlit as st
@@ -5,14 +6,13 @@ import pymongo
 import pandas as pd
 
 
-def get_data(client) -> pd.DataFrame:
+def get_data(db) -> pd.DataFrame:
     """Fetch the food data from MongoDB.
 
     :return: Food data as DataFrame.
     """
-    db = client.expenses
     df = pd.DataFrame(list(db.food.find({}, {"_id": 0})))  # Fetch data as dataframe
-    df['date'] = pd.to_datetime(df['date'])  # Convert from string to datetime
+    df['date'] = pd.to_datetime(df['date'])  # Convert to datetime
     return df
 
 
@@ -37,8 +37,7 @@ def validate_expense(document) -> bool:
         return False
 
 
-def insert_expense(client, document) -> None:
-    db = client.expenses
+def insert_expense(db, document) -> None:
     try:
         db.food.insert_one(document)
         st.info('Row inserted successfully!')
@@ -47,11 +46,12 @@ def insert_expense(client, document) -> None:
 
 
 def main():
-    st.set_page_config('Food Cost Tracker', '🍔')
+    st.set_page_config('Grocery Expense Tracker', '🍔')
     client = pymongo.MongoClient(st.secrets['mongo']['uri'])
-    df_expenses = get_data(client)  # Get food data to display
+    db = client.expenses
+    df_expenses = get_data(db)  # Get food data to display
 
-    st.markdown('# Food Cost Tracker')
+    st.markdown('# Grocery Expense Tracker')
     with st.form(key='insert', clear_on_submit=True):  # Create insert form
         st.markdown('## Insert New Expense')
         form_col_1, form_col_2 = st.columns(2)  # Define columns in form
@@ -77,13 +77,38 @@ def main():
         }
 
         if validate_expense(expense):
-            insert_expense(client, expense)
+            insert_expense(db, expense)
+            df_expenses = get_data(db)  # Refresh overview section
 
     st.markdown('## Data Overview')
-    refresh_button = st.button('Refresh Data')
-    if refresh_button:
-        df_expenses = get_data(client)
+    st.markdown('### Data by Date Range')
+    # Select current month by default
+    date_range = st.date_input('Query Range', [datetime.date.today().replace(day=1),
+                                               datetime.date.today().replace(
+                                                   day=calendar.monthrange(date.year, date.month)[1])])
+    # Filter dataframe by date selection
+    df_range = df_expenses[
+        (df_expenses['date'].dt.date >= date_range[0]) & (df_expenses['date'].dt.date <= date_range[1])]
 
+    range_total = df_range['cost'].sum()  # Find total cost in range
+    range_gift_total = df_range[(df_range['gift'])]['cost'].sum()  # Find gift card sum in range
+    st.markdown(
+        "In the selected range you have spent **${total:.2f}**. "
+        "Of that total, **${gift:.2f}** was charged to gift cards.".format(
+            total=range_total, gift=range_gift_total))
+
+    st.markdown('#### Rows Within Date Range')
+    st.dataframe(df_range)
+
+    st.markdown('### All Data')
+    total = df_expenses['cost'].sum()  # Find total cost
+    gift_total = df_expenses[(df_expenses['gift'])]['cost'].sum()  # Find gift card sum
+    st.markdown(
+        "Overall you have spent **${total:.2f}**. "
+        "Of that total, **${gift:.2f}** was charged to gift cards.".format(
+            total=total, gift=gift_total))
+
+    st.markdown('#### All Rows')
     st.dataframe(df_expenses)
 
 
