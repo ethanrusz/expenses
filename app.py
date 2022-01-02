@@ -100,6 +100,9 @@ def main():
     st.markdown('#### Rows Within Date Range')
     st.dataframe(df_range)
 
+    st.markdown('#### Date vs. Cost (USD)')
+    st.line_chart(df_range[['date', 'cost']].set_index('date'))  # Plot date and cost in range
+
     st.markdown('### All Data')
     total = df_expenses['cost'].sum()  # Find total cost
     gift_total = df_expenses[(df_expenses['gift'])]['cost'].sum()  # Find gift card sum
@@ -110,6 +113,9 @@ def main():
 
     st.markdown('#### All Rows')
     st.dataframe(df_expenses)
+
+    st.markdown('#### Date vs. Cost (USD)')
+    st.line_chart(df_expenses[['date', 'cost']].set_index('date'))  # Plot date and cost
 
 
 if __name__ == '__main__':
