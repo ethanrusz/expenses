@@ -92,10 +92,10 @@ def main():
 
     range_total = df_range['cost'].sum()  # Find total cost in range
     range_gift_total = df_range[(df_range['gift'])]['cost'].sum()  # Find gift card sum in range
-    st.markdown(
-        "In the selected range you have spent **${total:.2f}**. "
-        "Of that total, **${gift:.2f}** or {percentage:.0%} was charged to gift cards.".format(
-            total=range_total, gift=range_gift_total, percentage=range_gift_total / range_total))
+    st.markdown("Overall you have spent **${total:.2f}**.".format(total=range_total))
+    if range_total != 0:
+        st.markdown("Of that total, **${gift:.0f}** or **{percentage:.0%}** was charged to gift cards.".format(
+            gift=range_gift_total, percentage=range_gift_total / range_total))
 
     st.markdown('#### Rows Within Date Range')
     st.dataframe(df_range)
@@ -106,10 +106,11 @@ def main():
     st.markdown('### All Data')
     total = df_expenses['cost'].sum()  # Find total cost
     gift_total = df_expenses[(df_expenses['gift'])]['cost'].sum()  # Find gift card sum
-    st.markdown(
-        "Overall you have spent **${total:.2f}**. "
-        "Of that total, **${gift:.0f}** or {percentage:.0%} was charged to gift cards.".format(
-            total=total, gift=gift_total, percentage=gift_total / total))
+    st.markdown("Overall you have spent **${total:.2f}**.".format(total=total))
+    if total != 0:
+        st.markdown(
+            "Of that total, **${gift:.0f}** or **{percentage:.0%}** was charged to gift cards.".format(gift=gift_total,
+                                                                                                       percentage=gift_total / total))
 
     st.markdown('#### All Rows')
     st.dataframe(df_expenses)
